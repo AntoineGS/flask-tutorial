@@ -14,3 +14,4 @@ class Config:
     mailPassword = os.environ.get('MAIL_PASSWORD')
     admins = ['antoineg.simard@gmail.com']
     postsPerPage = 25
+    languages = ['en', 'es']
