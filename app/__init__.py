@@ -12,34 +12,54 @@ from logging.handlers import SMTPHandler, RotatingFileHandler
 import os
 
 
-config = Config
-app = Flask(__name__)
-# Flask configs
-app.config['SECRET_KEY'] = config.secretKey
-# SQLAlchemy configs
-app.config['SQLALCHEMY_DATABASE_URI'] = config.sqlAlchemyDatabaseUri
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Flask Mail configs
-app.config['MAIL_SERVER'] = config.mailServer
-app.config['MAIL_PORT'] = config.mailPort
-app.config['MAIL_USE_TLS'] = config.mailUseTls
-app.config['MAIL_USERNAME'] = config.mailUsername
-app.config['MAIL_PASSWORD'] = config.mailPassword
-
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-login = LoginManager(app)
-login.login_view = 'login'
+db = SQLAlchemy()
+migrate = Migrate()
+login = LoginManager()
+login.login_view = 'auth.login'
 login.login_message = _l('Please log in to access this page.')
-mail = Mail(app)
-bootstrap = Bootstrap(app)
-moment = Moment(app)
-babel = Babel(app)
+mail = Mail()
+bootstrap = Bootstrap()
+moment = Moment()
+babel = Babel()
+config = Config
 
-from app import routes, models, errors
 
-if not app.debug:
-    if config.mailServer:
+def create_app(config_class=Config):
+    global config
+    app = Flask(__name__)
+    # Flask configs
+    config = config_class
+    app.config['SECRET_KEY'] = config.secretKey
+    # SQLAlchemy configs
+    app.config['SQLALCHEMY_DATABASE_URI'] = config.sqlAlchemyDatabaseUri
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Flask Mail configs
+    app.config['MAIL_SERVER'] = config.mailServer
+    app.config['MAIL_PORT'] = config.mailPort
+    app.config['MAIL_USE_TLS'] = config.mailUseTls
+    app.config['MAIL_USERNAME'] = config.mailUsername
+    app.config['MAIL_PASSWORD'] = config.mailPassword
+    app.testing = config.testing
+
+    db.init_app(app)
+    migrate.init_app(app, db)
+    login.init_app(app)
+    mail.init_app(app)
+    bootstrap.init_app(app)
+    moment.init_app(app)
+    babel.init_app(app)
+
+    from app import models
+    from app.auth import routes
+    from app.auth import bp as auth_bp
+    from app.errors import bp as errors_bp
+    from app.main import bp as main_bp
+
+    app.register_blueprint(errors_bp)
+    app.register_blueprint(auth_bp, url_prefix='/auth')
+    app.register_blueprint(main_bp)
+
+    if not app.debug and not app.testing and config.mailServer:
         auth = None
         if config.mailUsername or config.mailPassword:
             auth = (config.mailUsername, config.mailPassword)
@@ -65,6 +85,8 @@ if not app.debug:
 
         app.logger.setLevel(logging.INFO)
         app.logger.info('Microblog startup')
+
+    return app
 
 
 @babel.localeselector
