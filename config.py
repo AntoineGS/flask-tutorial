@@ -15,3 +15,4 @@ class Config:
     admins = ['antoineg.simard@gmail.com']
     postsPerPage = 25
     languages = ['en', 'es']
+    msTranslatorKey = os.environ.get('MS_TRANSLATOR_KEY')
